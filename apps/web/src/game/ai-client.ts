@@ -1,6 +1,8 @@
 import type { Move, Position } from '@dama/engine';
-import type { ThinkRequest, ThinkResponse } from '@dama/ai/worker';
+import type { ThinkRequest, ThinkResponse } from '../ai.worker';
 import AiWorker from '../ai.worker?worker';
+
+const MODEL_URL = `${import.meta.env.BASE_URL}models/dama.onnx`;
 
 let worker: Worker | null = null;
 let nextId = 1;
@@ -18,9 +20,9 @@ function getWorker(): Worker {
 }
 
 /** Asks the background worker for a move, so the board stays responsive while it searches. */
-export function think(position: Position, level: number): Promise<Move | null> {
+export function think(position: Position, quietPlies: number, level: number): Promise<Move | null> {
   const id = nextId++;
-  const request: ThinkRequest = { id, position, level };
+  const request: ThinkRequest = { id, position, quietPlies, level, modelUrl: MODEL_URL };
   return new Promise((resolve) => {
     pending.set(id, resolve);
     getWorker().postMessage(request);

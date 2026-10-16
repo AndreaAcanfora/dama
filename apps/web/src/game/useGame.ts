@@ -57,7 +57,7 @@ export function useGame(mode: Mode, soundOn: boolean, start?: Position) {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     setThinking(true);
-    void think(position, mode.level).then((move) => {
+    void think(position, current.game.quietPlies, mode.level).then((move) => {
       const wait = Math.max(0, MIN_AI_DELAY_MS - (performance.now() - started));
       timer = setTimeout(() => {
         if (cancelled || gen !== generation.current) return;
@@ -69,7 +69,7 @@ export function useGame(mode: Mode, soundOn: boolean, start?: Position) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [mode, over, humanTurn, position, commit]);
+  }, [mode, over, humanTurn, position, current.game.quietPlies, commit]);
 
   const { selected, tap, targets, movable } = useSelection(moves, humanTurn && !over && !thinking, commit);
 

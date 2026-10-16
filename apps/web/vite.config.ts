@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -7,6 +8,7 @@ const base = process.env.BASE_PATH ?? '/';
 
 export default defineConfig({
   base,
+  define: { __HAS_MODEL__: JSON.stringify(existsSync(new URL('./public/models/dama.onnx', import.meta.url))) },
   plugins: [
     react(),
     VitePWA({
@@ -32,7 +34,13 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // The Maestro model and runtime are large: cached on first use instead of precached.
         runtimeCaching: [
+          {
+            urlPattern: /\.(onnx|wasm)$/,
+            handler: 'CacheFirst',
+            options: { cacheName: 'maestro', expiration: { maxEntries: 6 } },
+          },
           {
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/,
             handler: 'CacheFirst',

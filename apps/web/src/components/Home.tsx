@@ -1,4 +1,4 @@
-import { LEVELS } from '@dama/ai';
+import { PLAYABLE_LEVELS } from '../game/levels';
 import { format } from '../lib/i18n';
 import type { Lang, Strings } from '../lib/i18n';
 import type { ColorChoice, Settings } from '../lib/settings';
@@ -37,8 +37,8 @@ export function Home({ t, lang, settings, onChange, onPlayComputer, onPlayLocal,
 
         <fieldset className="levels">
           <legend>{t.level}</legend>
-          <div className="level-row">
-            {LEVELS.map((level) => (
+          <div className="level-row" style={{ gridTemplateColumns: `repeat(${PLAYABLE_LEVELS.length}, 1fr)` }}>
+            {PLAYABLE_LEVELS.map((level) => (
               <button
                 key={level.id}
                 type="button"

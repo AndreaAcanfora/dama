@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
+import { LEVELS } from '@dama/ai';
 import { fromFen } from '@dama/engine';
 import type { Position } from '@dama/engine';
 import { GameScreen } from './components/GameScreen';
 import { Home } from './components/Home';
 import { OnlineScreen } from './components/OnlineScreen';
 import { Sheet } from './components/Sheet';
+import { PLAYABLE_LEVELS } from './game/levels';
 import type { Mode } from './game/useGame';
 import { STRINGS } from './lib/i18n';
 import { WS_URL } from './lib/online';
@@ -53,7 +55,9 @@ export function App() {
 
   const startComputer = useCallback(() => {
     const human = settings.color === 'random' ? (Math.random() < 0.5 ? 'white' : 'black') : settings.color;
-    setScreen({ name: 'game', mode: { kind: 'ai', level: settings.level, human }, key: Date.now() });
+    // A saved level may not exist in this build (Maestro without a model).
+    const level = PLAYABLE_LEVELS.some((l) => l.id === settings.level) ? settings.level : LEVELS.length;
+    setScreen({ name: 'game', mode: { kind: 'ai', level, human }, key: Date.now() });
   }, [settings.color, settings.level]);
 
   const recordResult = useCallback(

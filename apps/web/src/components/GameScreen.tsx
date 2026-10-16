@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { LEVELS } from '@dama/ai';
+import { PLAYABLE_LEVELS } from '../game/levels';
 import { popcount, toNumber } from '@dama/engine';
 import type { Color, Position } from '@dama/engine';
 import { useGame } from '../game/useGame';
@@ -47,7 +47,7 @@ export function GameScreen({ t, lang, mode, start, settings, onExit, onRematch, 
     message = position.turn === 'white' ? t.whiteToMove : t.blackToMove;
   }
 
-  const level = mode.kind === 'ai' ? LEVELS.find((l) => l.id === mode.level) : undefined;
+  const level = mode.kind === 'ai' ? PLAYABLE_LEVELS.find((l) => l.id === mode.level) : undefined;
   const flipped = mode.kind === 'ai' && mode.human === 'black';
   const top: Color = flipped ? 'white' : 'black';
   const bottom: Color = flipped ? 'black' : 'white';
