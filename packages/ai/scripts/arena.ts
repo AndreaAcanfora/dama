@@ -22,6 +22,12 @@ const games = flag('games', 20);
 const sims = flag('sims', 200);
 const MAX_PLIES = 200;
 
+function counts(keys: string[]) {
+  const m = new Map<string, number>();
+  for (const k of keys) m.set(k, (m.get(k) ?? 0) + 1);
+  return m;
+}
+
 const session = await InferenceSession.create(modelPath);
 const evaluate: Evaluate = async (planes) => {
   const out = await session.run({ planes: new Tensor('float32', planes, [1, PLANES, 8, 8]) });
@@ -38,7 +44,7 @@ for (let g = 0; g < games; g++) {
   while (s.kind === 'ongoing' && game.moves.length < MAX_PLIES) {
     const netTurn = (game.position.turn === 'white') === netIsWhite;
     const move = netTurn
-      ? (await neuralSearch(game.position, game.quietPlies, evaluate, { simulations: sims })).move
+      ? (await neuralSearch(game.position, game.quietPlies, evaluate, { simulations: sims, history: counts(game.history) })).move
       : chooseMove(game.position, level);
     game = play(game, move!);
     s = status(game);

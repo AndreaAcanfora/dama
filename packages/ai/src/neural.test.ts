@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { fromFen, legalMoves, moveToString } from '@dama/engine';
+import { applyMove, fromFen, legalMoves, moveToString, positionKey } from '@dama/engine';
 import { POLICY_SIZE, encode, neuralSearch, policyIndex } from './neural';
 import type { Evaluate } from './neural';
 
@@ -41,4 +41,28 @@ describe('neural search', () => {
     expect(result.move && moveToString(result.move)).toBe('22x13x6');
     expect(calls).toBe(0);
   });
+
+  it('scores going back to a twice-seen position as a draw', async () => {
+    // White has three kings against one, so every normal position favours White,
+    // except the one that would occur for the third time.
+    const start = fromFen('W:WK32,K29,K30:BK1');
+    const repeated = applyMove(start, legalMoves(start).find((m) => moveToString(m) === '32-28')!);
+    const material: Evaluate = async (x) => {
+      let mine = 0;
+      let theirs = 0;
+      for (let i = 0; i < 64; i++) {
+        mine += x[64 + i]!;
+        theirs += x[3 * 64 + i]!;
+      }
+      return { policy: new Float32Array(POLICY_SIZE), value: 0.4 * (mine - theirs) };
+    };
+    const history = new Map([
+      [positionKey(start), 1],
+      [positionKey(repeated), 2],
+    ]);
+    const result = await neuralSearch(start, 0, material, { simulations: 300, history });
+    expect(result.move && moveToString(result.move)).not.toBe('32-28');
+    expect(result.stats.get('32-28')?.q).toBe(0);
+  });
 });
+

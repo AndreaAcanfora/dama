@@ -12,6 +12,8 @@ export interface ThinkRequest {
   id: number;
   position: Position;
   quietPlies: number;
+  /** positionKey of every position so far, for the repetition rule. */
+  history: string[];
   level: number;
   modelUrl: string;
 }
@@ -41,11 +43,13 @@ function loadNetwork(modelUrl: string) {
 }
 
 self.onmessage = async (event: MessageEvent<ThinkRequest>) => {
-  const { id, position, quietPlies, level, modelUrl } = event.data;
+  const { id, position, quietPlies, history, level, modelUrl } = event.data;
   let move: Move | null;
   if (level === MAESTRO) {
     const { evaluate } = await loadNetwork(modelUrl);
-    move = (await neuralSearch(position, quietPlies, evaluate, MAESTRO_SEARCH)).move;
+    const counts = new Map<string, number>();
+    for (const key of history) counts.set(key, (counts.get(key) ?? 0) + 1);
+    move = (await neuralSearch(position, quietPlies, evaluate, { ...MAESTRO_SEARCH, history: counts })).move;
   } else {
     move = chooseMove(position, level);
   }

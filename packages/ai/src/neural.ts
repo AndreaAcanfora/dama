@@ -1,8 +1,9 @@
 /**
  * Neural network player: the encoding mirrors training/dama/encode.py (checked by
- * fixtures/encoding.json) and the search mirrors training/dama/mcts.py.
+ * fixtures/encoding.json) and the search mirrors training/dama/mcts.py, including
+ * scoring a position that would occur for the third time as a draw.
  */
-import { applyMove, colOf, has, legalMoves, rowOf } from '@dama/engine';
+import { applyMove, colOf, has, legalMoves, moveToString, positionKey, rowOf } from '@dama/engine';
 import type { Color, Move, Position } from '@dama/engine';
 
 export const PLANES = 5;
@@ -73,32 +74,46 @@ export interface NeuralOptions {
   simulations: number;
   /** Stop early after this long, keeping the visits so far. */
   timeMs?: number;
+  /** How often each position of the game so far (by positionKey, including this one) has occurred. */
+  history?: Map<string, number>;
 }
 
 export async function neuralSearch(
   position: Position,
   quietPlies: number,
   evaluate: Evaluate,
-  { simulations, timeMs }: NeuralOptions,
-): Promise<{ move: Move | null; value: number; simulations: number }> {
+  { simulations, timeMs, history = new Map() }: NeuralOptions,
+): Promise<{ move: Move | null; value: number; simulations: number; stats: Map<string, { visits: number; q: number }> }> {
   const root = node(position, 1);
   root.moves = legalMoves(position);
-  if (root.moves.length === 0) return { move: null, value: -1, simulations: 0 };
-  if (root.moves.length === 1) return { move: root.moves[0]!, value: 0, simulations: 0 };
+  if (root.moves.length === 0) return { move: null, value: -1, simulations: 0, stats: new Map() };
+  if (root.moves.length === 1) return { move: root.moves[0]!, value: 0, simulations: 0, stats: new Map() };
 
   const deadline = timeMs === undefined ? Infinity : performance.now() + timeMs;
   const rootValue = await expand(root, quietPlies, evaluate);
   let done = 0;
   for (; done < simulations && performance.now() < deadline; done++) {
     const path = [root];
+    const seen: string[] = [];
     let n = root;
+    let repetition = false;
     while (n.children.length > 0) {
       n = select(n);
       path.push(n);
+      const key = positionKey(n.position);
+      if ((history.get(key) ?? 0) + seen.filter((k) => k === key).length >= 2) {
+        repetition = true;
+        break;
+      }
+      seen.push(key);
     }
-    n.moves ??= legalMoves(n.position);
-    // A side with no move has lost.
-    let value = n.moves.length === 0 ? -1 : await expand(n, 0, evaluate);
+    let value: number;
+    if (repetition) value = 0;
+    else {
+      n.moves ??= legalMoves(n.position);
+      // A side with no move has lost.
+      value = n.moves.length === 0 ? -1 : await expand(n, 0, evaluate);
+    }
     // `value` is for the side to move at the leaf; whoever chose each node scores the opposite.
     for (let i = path.length - 1; i >= 1; i--) {
       value = -value;
@@ -112,5 +127,11 @@ export async function neuralSearch(
   root.children.forEach((c, i) => {
     if (c.visits > root.children[best]!.visits) best = i;
   });
-  return { move: root.moves[best]!, value: rootValue, simulations: done };
+  const stats = new Map(
+    root.moves.map((m, i) => {
+      const c = root.children[i]!;
+      return [moveToString(m), { visits: c.visits, q: c.visits ? c.valueSum / c.visits : 0 }] as const;
+    }),
+  );
+  return { move: root.moves[best]!, value: rootValue, simulations: done, stats };
 }

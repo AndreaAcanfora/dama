@@ -1,4 +1,4 @@
-import type { Move, Position } from '@dama/engine';
+import type { GameState, Move } from '@dama/engine';
 import type { ThinkRequest, ThinkResponse } from '../ai.worker';
 import AiWorker from '../ai.worker?worker';
 
@@ -20,9 +20,10 @@ function getWorker(): Worker {
 }
 
 /** Asks the background worker for a move, so the board stays responsive while it searches. */
-export function think(position: Position, quietPlies: number, level: number): Promise<Move | null> {
+export function think(game: GameState, level: number): Promise<Move | null> {
   const id = nextId++;
-  const request: ThinkRequest = { id, position, quietPlies, level, modelUrl: MODEL_URL };
+  const { position, quietPlies, history } = game;
+  const request: ThinkRequest = { id, position, quietPlies, history, level, modelUrl: MODEL_URL };
   return new Promise((resolve) => {
     pending.set(id, resolve);
     getWorker().postMessage(request);
