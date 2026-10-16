@@ -10,11 +10,13 @@ interface Props {
   onChange: (patch: Partial<Settings>) => void;
   onPlayComputer: () => void;
   onPlayLocal: () => void;
+  /** Null when this build has no online server configured. */
+  onPlayOnline: (() => void) | null;
   onOpenSettings: () => void;
   onOpenRules: () => void;
 }
 
-export function Home({ t, lang, settings, onChange, onPlayComputer, onPlayLocal, onOpenSettings, onOpenRules }: Props) {
+export function Home({ t, lang, settings, onChange, onPlayComputer, onPlayLocal, onPlayOnline, onOpenSettings, onOpenRules }: Props) {
   const record = settings.record[settings.level];
   const colors: { id: ColorChoice; label: string }[] = [
     { id: 'white', label: t.white },
@@ -77,10 +79,17 @@ export function Home({ t, lang, settings, onChange, onPlayComputer, onPlayLocal,
         <span className="hint">{t.twoPlayersHint}</span>
       </button>
 
-      <div className="mode mode-secondary is-disabled" aria-disabled="true">
-        <span className="mode-title">{t.online}</span>
-        <span className="hint">{t.onlineHint}</span>
-      </div>
+      {onPlayOnline ? (
+        <button type="button" className="mode mode-secondary" onClick={onPlayOnline}>
+          <span className="mode-title">{t.online}</span>
+          <span className="hint">{t.onlineHint}</span>
+        </button>
+      ) : (
+        <div className="mode mode-secondary is-disabled" aria-disabled="true">
+          <span className="mode-title">{t.online}</span>
+          <span className="hint">{t.onlineSoon}</span>
+        </div>
+      )}
 
       <footer className="home-foot">
         <button type="button" className="link" onClick={onOpenRules}>

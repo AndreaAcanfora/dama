@@ -2,15 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { legalMoves, newGame, play, status } from '@dama/engine';
 import type { Position } from '@dama/engine';
 import type { Color, GameState, GameStatus, Move } from '@dama/engine';
-import { sounds, vibrate } from '../lib/sound';
 import { think } from './ai-client';
 import { movePieces, piecesOf } from './pieces';
 import type { PieceView } from './pieces';
+import { moveFeedback, useSelection } from './selection';
 
 export type Mode = { kind: 'ai'; level: number; human: Color } | { kind: 'local' };
 
-/** Seconds the animation spends on each step of a move. */
-export const STEP_SECONDS = 0.17;
+export { STEP_SECONDS } from './selection';
 /** The computer never answers faster than this, so its move can be followed. */
 const MIN_AI_DELAY_MS = 450;
 
@@ -27,7 +26,6 @@ function fresh(start?: Position): Snapshot {
 
 export function useGame(mode: Mode, soundOn: boolean, start?: Position) {
   const [stack, setStack] = useState<Snapshot[]>(() => [fresh(start)]);
-  const [selected, setSelected] = useState<number | null>(null);
   const [thinking, setThinking] = useState(false);
   // Bumped on undo/reset so a search started for an older position is ignored.
   const generation = useRef(0);
@@ -46,13 +44,7 @@ export function useGame(mode: Mode, soundOn: boolean, start?: Position) {
         const top = s[s.length - 1]!;
         return [...s, { game: play(top.game, move), pieces: movePieces(top.pieces, move), lastMove: move }];
       });
-      setSelected(null);
-      if (soundOn) {
-        if (move.captures.length > 0) sounds.capture(move.captures.length, STEP_SECONDS);
-        else sounds.move();
-        if (move.promotes) sounds.promote(move.path.length * STEP_SECONDS);
-      }
-      if (move.captures.length > 0) vibrate(move.captures.map(() => 25));
+      moveFeedback(move, soundOn);
     },
     [soundOn],
   );
@@ -79,31 +71,13 @@ export function useGame(mode: Mode, soundOn: boolean, start?: Position) {
     };
   }, [mode, over, humanTurn, position, commit]);
 
-  const tap = useCallback(
-    (square: number) => {
-      if (!humanTurn || over || thinking) return;
-      if (moves.some((m) => m.from === square)) {
-        setSelected((s) => (s === square ? null : square));
-        return;
-      }
-      if (selected !== null) {
-        const move = moves.find((m) => m.from === selected && m.to === square);
-        if (move) {
-          commit(move);
-          return;
-        }
-      }
-      setSelected(null);
-    },
-    [humanTurn, over, thinking, moves, selected, commit],
-  );
+  const { selected, tap, targets, movable } = useSelection(moves, humanTurn && !over && !thinking, commit);
 
   const canUndo = stack.length > 1 && !(mode.kind === 'ai' && stack.length === 2 && mode.human === 'black');
 
   const undo = useCallback(() => {
     generation.current++;
     setThinking(false);
-    setSelected(null);
     setStack((s) => {
       if (s.length <= 1) return s;
       if (mode.kind === 'local') return s.slice(0, -1);
@@ -117,12 +91,8 @@ export function useGame(mode: Mode, soundOn: boolean, start?: Position) {
   const reset = useCallback(() => {
     generation.current++;
     setThinking(false);
-    setSelected(null);
     setStack([fresh(start)]);
   }, [start]);
-
-  const targets = selected === null ? [] : moves.filter((m) => m.from === selected).map((m) => m.to);
-  const movable = humanTurn && !over && !thinking ? [...new Set(moves.map((m) => m.from))] : [];
 
   return {
     position,

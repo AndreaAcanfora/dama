@@ -596,3 +596,43 @@ legend {
   display: block;
   font-size: 0.875rem;
 }
+
+/* Online */
+
+.invite {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.invite .hint {
+  margin: 0;
+}
+
+.invite-link {
+  display: block;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--felt-line);
+  border-radius: 12px;
+  font-size: 0.875rem;
+  word-break: break-all;
+  user-select: all;
+}
+
+.invite-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.rematch-note {
+  align-self: center;
+  margin: 0;
+}
+
+.cta:disabled {
+  opacity: 0.55;
+  cursor: default;
+}

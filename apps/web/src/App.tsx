@@ -3,13 +3,18 @@ import { fromFen } from '@dama/engine';
 import type { Position } from '@dama/engine';
 import { GameScreen } from './components/GameScreen';
 import { Home } from './components/Home';
+import { OnlineScreen } from './components/OnlineScreen';
 import { Sheet } from './components/Sheet';
 import type { Mode } from './game/useGame';
 import { STRINGS } from './lib/i18n';
+import { WS_URL } from './lib/online';
 import { useSettings } from './lib/settings';
 import type { Theme } from './lib/settings';
 
-type Screen = { name: 'home' } | { name: 'game'; mode: Mode; key: number; start?: Position };
+type Screen =
+  | { name: 'home' }
+  | { name: 'game'; mode: Mode; key: number; start?: Position }
+  | { name: 'online'; code: string | null; key: number };
 
 /** `#pos=<FEN>` opens a two-player game from that position, e.g. to study or share it. */
 function positionFromHash(): Position | undefined {
@@ -22,7 +27,11 @@ function positionFromHash(): Position | undefined {
   }
 }
 
+const ROOM_HASH = /^#\/play\/([2-9A-Za-z]{6})$/;
+
 function initialScreen(): Screen {
+  const room = ROOM_HASH.exec(window.location.hash);
+  if (room && WS_URL) return { name: 'online', code: room[1]!.toUpperCase(), key: 0 };
   const start = positionFromHash();
   return start ? { name: 'game', mode: { kind: 'local' }, key: 0, start } : { name: 'home' };
 }
@@ -36,6 +45,11 @@ export function App() {
   useEffect(() => {
     document.documentElement.lang = settings.lang;
   }, [settings.lang]);
+
+  const goHome = useCallback(() => {
+    if (window.location.hash) window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    setScreen({ name: 'home' });
+  }, []);
 
   const startComputer = useCallback(() => {
     const human = settings.color === 'random' ? (Math.random() < 0.5 ? 'white' : 'black') : settings.color;
@@ -67,8 +81,19 @@ export function App() {
           onChange={update}
           onPlayComputer={startComputer}
           onPlayLocal={() => setScreen({ name: 'game', mode: { kind: 'local' }, key: Date.now() })}
+          onPlayOnline={WS_URL ? () => setScreen({ name: 'online', code: null, key: Date.now() }) : null}
           onOpenSettings={() => setSheet('settings')}
           onOpenRules={() => setSheet('rules')}
+        />
+      ) : screen.name === 'online' ? (
+        <OnlineScreen
+          key={screen.key}
+          t={t}
+          code={screen.code}
+          settings={settings}
+          inviteUrl={(code) => `${window.location.origin}${window.location.pathname}#/play/${code}`}
+          onRoom={(code) => window.history.replaceState(null, '', `#/play/${code}`)}
+          onExit={goHome}
         />
       ) : (
         <GameScreen
@@ -78,10 +103,7 @@ export function App() {
           mode={screen.mode}
           start={screen.start}
           settings={settings}
-          onExit={() => {
-            if (window.location.hash) window.history.replaceState(null, '', window.location.pathname + window.location.search);
-            setScreen({ name: 'home' });
-          }}
+          onExit={goHome}
           onRematch={() =>
             screen.mode.kind === 'ai'
               ? setScreen({ name: 'game', mode: { ...screen.mode, human: screen.mode.human === 'white' ? 'black' : 'white' }, key: Date.now() })
