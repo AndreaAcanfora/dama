@@ -1,8 +1,9 @@
 """PUCT Monte Carlo tree search, batched across many games so the network runs on full batches.
 
 Values are always from the point of view of the side to move at the node being evaluated.
-Inside the tree only "no legal move" ends a game; the repetition and 40-move draws are
-applied by the real game loop in selfplay.py.
+Inside the tree a game ends when the side to move has no move (a loss) or when a position
+would occur for the third time, counting the real game history and the path (a draw).
+Without the second rule the search happily repeats moves while winning.
 """
 
 from __future__ import annotations
@@ -89,7 +90,14 @@ class Search:
                 node.terminal = -1.0
         return node.terminal is None and not node.children
 
-    def run(self, roots: list[Node], quiet: list[int], add_noise: bool) -> None:
+    def run(
+        self,
+        roots: list[Node],
+        quiet: list[int],
+        add_noise: bool,
+        histories: list[dict[Position, int]] | None = None,
+    ) -> None:
+        """`histories` maps each game's positions so far (including the root) to how often they occurred."""
         batch = np.zeros((len(roots), PLANES, 8, 8), dtype=np.float32)
 
         # Make sure every root is expanded, then add exploration noise.
@@ -114,11 +122,22 @@ class Search:
                 if root.terminal is not None:
                     paths.append([])
                     continue
+                history = histories[g] if histories else {}
                 node, path = root, [root]
+                seen: list[Position] = []
+                repetition = False
                 while node.children:
                     node = node.children[_select(node)]
                     path.append(node)
+                    if history.get(node.position, 0) + seen.count(node.position) >= 2:
+                        repetition = True
+                        break
+                    seen.append(node.position)
                 paths.append(path)
+                if repetition:
+                    _backup(path[1:], 0.0)
+                    root.visits += 1
+                    continue
                 if self._prepare(node):
                     leaves.append(g)
                 else:

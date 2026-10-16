@@ -36,3 +36,22 @@ def test_self_play_produces_consistent_samples():
     assert stats.white + stats.black + stats.draws == 2
     assert len(samples.planes) == len(samples.policies) == len(samples.values) == sum(stats.plies)
     assert all(abs(p.sum() - 1) < 1e-5 for p in samples.policies)
+
+
+def test_search_scores_a_third_repetition_as_a_draw():
+    from dama.rules import apply_move
+
+    # White has three kings against one, so every normal position favours White,
+    # except going back to a position already seen twice, which is a draw.
+    start = from_fen("W:WK32,K29,K30:BK1")
+    repeated = apply_move(start, next(m for m in legal_moves(start) if move_to_string(m) == "32-28"))
+
+    def material(batch):
+        diff = batch[:, 1].sum(axis=(1, 2)) - batch[:, 3].sum(axis=(1, 2))
+        return np.zeros((len(batch), POLICY_SIZE), np.float32), (0.4 * diff).astype(np.float32)
+
+    root = Node(start, 1.0)
+    Search(material, simulations=300).run([root], [0], add_noise=False, histories=[{start: 1, repeated: 2}])
+    by_move = {move_to_string(m): c for m, c in zip(root.moves, root.children)}
+    assert by_move["32-28"].q() == 0.0
+    assert all(c.q() > 0.5 for name, c in by_move.items() if name != "32-28")

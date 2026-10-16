@@ -53,7 +53,12 @@ def play_games(
         started += 1
 
     while slots:
-        search.run([s["root"] for s in slots], [s["game"].quiet_plies for s in slots], add_noise=True)
+        search.run(
+            [s["root"] for s in slots],
+            [s["game"].quiet_plies for s in slots],
+            add_noise=True,
+            histories=[s["game"].counts for s in slots],
+        )
         finished = []
         for i, slot in enumerate(slots):
             game: Game = slot["game"]
