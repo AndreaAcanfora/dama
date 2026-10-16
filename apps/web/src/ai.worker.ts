@@ -1,0 +1,1 @@
+import '@dama/ai/worker';

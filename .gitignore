@@ -8,3 +8,4 @@ training/runs
 coverage
 test-results
 playwright-report
+apps/web/dev-dist
