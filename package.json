@@ -1,0 +1,15 @@
+{
+  "name": "dama",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.9.0",
+  "scripts": {
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "dev": "pnpm --filter @dama/web dev",
+    "build": "pnpm --filter @dama/web build"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
