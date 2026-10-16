@@ -28,6 +28,7 @@ jobs:
       - run: pnpm build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_WS_URL: wss://dama.178-105-121-143.sslip.io
       - uses: actions/upload-pages-artifact@v3
         with:
           path: apps/web/dist
