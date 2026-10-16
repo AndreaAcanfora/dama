@@ -1,0 +1,21 @@
+name: Bug report
+description: Something in the game does not work as it should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: position
+    attributes:
+      label: Position
+      description: If it is about a specific position, the URL with `#pos=...` or the moves played.
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: e.g. iPhone 13, Safari 18 / Windows, Chrome 141

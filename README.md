@@ -70,6 +70,10 @@ pnpm --filter @dama/web exec playwright test   # end-to-end, mobile and desktop
 `#pos=<FEN>` in the URL opens a two-player game from that position, for example
 `#pos=W:W19,K30,25,K3:BK14,10,6,1`.
 
+## Contributing
+
+Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 MIT

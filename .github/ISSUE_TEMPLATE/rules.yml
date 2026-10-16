@@ -1,0 +1,18 @@
+name: Rules question
+description: You think the game applies an Italian draughts rule incorrectly.
+labels: [rules]
+body:
+  - type: textarea
+    id: rule
+    attributes:
+      label: The rule
+      description: Which rule, and where it is written (FID regulation article, book, link).
+    validations:
+      required: true
+  - type: input
+    id: position
+    attributes:
+      label: A position that shows it
+      description: The URL with `#pos=...` (FEN) and the move you expected to be legal or illegal.
+    validations:
+      required: true

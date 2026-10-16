@@ -1,0 +1,52 @@
+name: Deploy online server
+
+# Redeploys dama-ws on the VPS when the server or the code it bundles changes.
+# The SSH key can only run scripts/deploy-server.sh (forced command in authorized_keys).
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/server/**
+      - packages/engine/**
+      - packages/protocol/**
+      - scripts/deploy-server.sh
+      - pnpm-lock.yaml
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-server
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter '@dama/server...'
+      - run: pnpm --filter '@dama/server...' test
+      - run: pnpm --filter @dama/server typecheck
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: vps
+      url: https://dama.178-105-121-143.sslip.io/health
+    steps:
+      - name: Deploy over SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy -o IdentitiesOnly=yes -o BatchMode=yes root@178.105.121.143 deploy
+      - name: Check the public endpoint
+        run: curl -fsS --retry 5 --retry-delay 3 https://dama.178-105-121-143.sslip.io/health
