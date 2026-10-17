@@ -54,8 +54,31 @@ Negamax alpha-beta with iterative deepening, a Zobrist transposition table, and 
 | Medio | depth 4, light noise, 3% random moves |
 | Difficile | up to 400 ms |
 | Esperto | up to 1.5 s |
+| Maestro | neural network trained by self-play, 800 MCTS simulations or 1.5 s |
 
-A sixth level trained with self-play reinforcement learning is planned.
+### Maestro
+
+Maestro is a small residual network (about 490k parameters, 1.9 MB) trained from zero, with no human games, AlphaZero-style: it played itself with Monte Carlo tree search and learned from the results. It runs in the browser with onnxruntime-web, downloaded only when you pick it. The training code is in [`training/`](training/).
+
+| | |
+|---|---|
+| Self-play games | 57,600 (150 iterations × 384) |
+| Training positions | 7.7 million |
+| Training time | 9.9 hours on a MacBook Pro M1 Pro |
+| Search during self-play | 128 simulations per move |
+
+Measured with `pnpm --filter @dama/ai arena`: 24 games per match, each pair of games from the same 4 random opening moves with colours swapped, because both players are otherwise deterministic and would repeat the same game.
+
+| match | wins | draws | losses | score |
+|---|---|---|---|---|
+| Maestro (800 simulations, 1.5 s) vs Esperto | 12 | 6 | 6 | 62.5% |
+| network after 150 iterations, 200 simulations, vs Esperto | 3 | 17 | 4 | 47.9% |
+| network after 100 iterations, 200 simulations, vs Esperto | 6 | 11 | 7 | 47.9% |
+| network after 150 iterations, 200 simulations, vs Difficile | 10 | 10 | 4 | 62.5% |
+
+With the browser's search budget Maestro scores about 90 Elo above Esperto. Twenty-four games are a small sample, so read these as rough numbers.
+
+One lesson from the first run: self-play collapsed to about 80% draws, all by threefold repetition and often with a large material lead. The search could not see that returning to a twice-seen position ends the game, so a winning side happily repeated itself. Counting the game history inside the tree fixed it (`training/dama/mcts.py`).
 
 ## Development
 
