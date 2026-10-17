@@ -1,6 +1,12 @@
 # Dama
 
-Italian draughts (dama italiana) in the browser: play the computer at five levels, or a friend on the same phone. Installable as a PWA and playable offline.
+Italian draughts (dama italiana) in the browser:
+
+- **against the computer**, from Principiante to Maestro, a neural network trained by self-play;
+- **two players** on the same phone;
+- **online with a friend**: send a link, each plays from their own device.
+
+Installable as a PWA; everything except online play works offline. Italian and English.
 
 **Play:** https://andreaacanfora.github.io/dama/
 
@@ -25,10 +31,13 @@ The draw rules follow common practice; open an issue if you have the FID regulat
 ## Layout
 
 ```
-packages/engine   rules: bitboard move generation, FEN, game status (no dependencies)
-packages/ai       alpha-beta search and the difficulty levels, runs in a Web Worker
-apps/web          Vite + React + SVG app, PWA, deployed to GitHub Pages
-fixtures          engine.json: perft counts and legal moves every rules implementation must reproduce
+packages/engine     rules: bitboard move generation, FEN, game status (no dependencies)
+packages/ai         alpha-beta levels, neural MCTS for Maestro, the arena script
+packages/protocol   message types shared by the web app and the online server
+apps/web            Vite + React + SVG app, PWA, deployed to GitHub Pages
+apps/server         online game server (Node + ws), deployed to a VPS
+training            Python self-play training (AlphaZero-style) and ONNX export
+fixtures            engine.json and encoding.json: what every rules and encoding implementation must reproduce
 ```
 
 ## The engine
@@ -80,6 +89,12 @@ With the browser's search budget Maestro scores about 90 Elo above Esperto. Twen
 
 One lesson from the first run: self-play collapsed to about 80% draws, all by threefold repetition and often with a large material lead. The search could not see that returning to a twice-seen position ends the game, so a winning side happily repeated itself. Counting the game history inside the tree fixed it (`training/dama/mcts.py`).
 
+## Online play
+
+`apps/server` is a small Node WebSocket server. Each game is a room with a six-character code (`#/play/ABC234` in the app); the first player gets White, the second Black. The server is authoritative: it checks every move with the same engine as the app, so a modified client cannot cheat. Players get a token that gives them their seat back after a refresh or a network change, and a rematch swaps colours. Limits per connection and per address, an origin allow-list and idle-room cleanup keep it small: it uses about 70 MB of memory.
+
+The app finds the server through `VITE_WS_URL` at build time; a build without it hides online play.
+
 ## Development
 
 ```bash
@@ -90,8 +105,22 @@ pnpm typecheck
 pnpm --filter @dama/web exec playwright test   # end-to-end, mobile and desktop
 ```
 
+To try online play locally, start the server too: `pnpm --filter @dama/server dev` (the dev app connects to `ws://localhost:8787`).
+
 `#pos=<FEN>` in the URL opens a two-player game from that position, for example
 `#pos=W:W19,K30,25,K3:BK14,10,6,1`.
+
+## CI and deployment
+
+All in GitHub Actions:
+
+| workflow | when | what |
+|---|---|---|
+| `ci.yml` | every push and pull request | type checks, unit tests, Playwright on mobile and desktop, and the Python rules checked against the engine fixtures |
+| `pages.yml` | push to `main` | builds the app and publishes it to GitHub Pages |
+| `deploy-server.yml` | push to `main` touching the server or the code it bundles | runs the server tests, then redeploys it on the VPS over SSH with a key that can only run `scripts/deploy-server.sh` |
+
+`main` is protected: changes from contributors go through a pull request with green CI and a review.
 
 ## Contributing
 
